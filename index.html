@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>报销系统 (V9 项目筛选版)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif; background-color: #000; margin: 0; padding: 0; display: flex; justify-content: center; min-height: 100vh; color: #1C1C1E; }
+
+        #root-container {
+            width: 100%;
+            max-width: 440px; 
+            background: #F2F2F7; 
+            height: 100vh; 
+            position: relative; 
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        .toggle-checkbox:checked { right: 0; border-color: #34C759; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #34C759; }
+
+        .modal-transition { transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1); }
+        .translate-y-full { transform: translateY(100%); }
+        .translate-y-0 { transform: translateY(0); }
+
+        .glass { background: rgba(255,255,255,0.95); border-bottom: 0.5px solid rgba(0,0,0,0.1); }
+        .pt-safe { padding-top: env(safe-area-inset-top); }
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+    </style>
+</head>
+<body>
+
+<div id="root-container">
+
+    <div id="login-view" class="absolute inset-0 z-50 flex flex-col justify-center px-8 bg-white transition-opacity duration-300">
+        <div class="mb-10 text-center">
+            <h1 class="text-3xl font-bold text-black mb-2 tracking-tight">报销系统</h1>
+            <p class="text-gray-400 text-sm">Supabase 云端同步</p>
+        </div>
+        <div id="error-banner" class="bg-red-50 text-red-500 p-3 rounded-xl text-sm mb-4 text-center hidden border border-red-100"></div>
+        <div class="space-y-4">
+            <input type="email" id="email" class="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition text-lg" placeholder="邮箱" value="hzp15@qq.com">
+            <input type="password" id="password" class="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition text-lg" placeholder="密码">
+        </div>
+        <button onclick="handleLogin()" id="login-btn" class="w-full bg-[#007AFF] text-white font-bold py-4 rounded-2xl text-lg mt-8 active:scale-95 transition shadow-xl shadow-blue-100">
+            登 录
+        </button>
+    </div>
+
+    <div id="app-view" class="flex-1 flex flex-col hidden h-full bg-[#F2F2F7]">
+
+        <header class="glass sticky top-0 z-20 pt-safe flex flex-col">
+            <div class="px-5 pt-4 pb-2 flex justify-between items-center">
+                <div>
+                    <div class="text-xs text-gray-500 font-medium mb-1">净报销额 (支出-收入)</div>
+                    <div class="text-3xl font-bold tracking-tight text-black" id="total-display">¥<span id="total-val">0.00</span></div>
+                </div>
+                <button onclick="handleLogout()" class="bg-gray-100 p-2 rounded-full text-gray-400 active:bg-gray-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                </button>
+            </div>
+
+            <div class="px-5 pb-3 pt-1 flex gap-2">
+                <div class="relative w-20 flex-shrink-0">
+                    <select id="filter-year" onchange="loadData()" class="w-full bg-gray-100 appearance-none rounded-lg py-1.5 pl-2 pr-5 text-sm font-bold text-gray-700 outline-none">
+                        </select>
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1 text-gray-500">
+                        <svg class="fill-current h-3 w-3" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                    </div>
+                </div>
+
+                <div class="relative w-16 flex-shrink-0">
+                    <select id="filter-month" onchange="loadData()" class="w-full bg-gray-100 appearance-none rounded-lg py-1.5 pl-2 pr-4 text-sm font-bold text-gray-700 outline-none">
+                        <option value="all">全年</option>
+                        <option value="01">1月</option><option value="02">2月</option><option value="03">3月</option>
+                        <option value="04">4月</option><option value="05">5月</option><option value="06">6月</option>
+                        <option value="07">7月</option><option value="08">8月</option><option value="09">9月</option>
+                        <option value="10">10月</option><option value="11">11月</option>
+                        <option value="12">12月</option>
+                    </select>
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1 text-gray-500">
+                        <svg class="fill-current h-3 w-3" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                    </div>
+                </div>
+
+                <div class="relative flex-1">
+                    <select id="filter-project" onchange="loadData()" class="w-full bg-gray-100 appearance-none rounded-lg py-1.5 pl-3 pr-8 text-sm font-medium text-gray-700 outline-none">
+                        <option value="">全部项目</option>
+                        </select>
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                        <svg class="fill-current h-3 w-3" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main id="tx-list" class="flex-1 overflow-y-auto p-4 space-y-5 pb-32 no-scrollbar">
+            </main>
+
+        <div class="absolute bottom-8 right-6 z-30 pb-safe">
+            <button onclick="openModal()" class="w-14 h-14 bg-[#007AFF] rounded-full shadow-2xl flex items-center justify-center text-white active:scale-90 transition-transform">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <div id="modal-overlay" class="absolute inset-0 bg-black/40 z-40 hidden opacity-0 transition-opacity backdrop-blur-sm" onclick="closeModal()"></div>
+    <div id="add-modal" class="absolute bottom-0 left-0 right-0 bg-[#F2F2F7] rounded-t-[2rem] z-50 modal-transition translate-y-full h-[85%] flex flex-col shadow-2xl pb-safe">
+        <div class="px-6 py-5 flex justify-between items-center bg-white rounded-t-[2rem] border-b border-gray-100">
+            <button onclick="closeModal()" class="text-gray-500 text-base font-medium">取消</button>
+            <span class="font-bold text-lg">记一笔</span>
+            <button onclick="submitData()" class="text-[#007AFF] font-bold text-base" id="save-btn">保存</button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-5 space-y-6">
+            <div class="bg-white rounded-2xl p-6 text-center shadow-sm">
+                <div class="flex justify-center items-baseline text-black">
+                    <span class="text-3xl font-bold mr-1">¥</span>
+                    <input type="number" id="amt" class="w-full text-center text-5xl font-bold bg-transparent outline-none placeholder-gray-200" placeholder="0">
+                </div>
+            </div>
+            <div class="bg-gray-200 p-1 rounded-xl flex">
+                <button onclick="setType('expense')" id="btn-expense" class="flex-1 py-2.5 rounded-lg text-sm font-bold bg-white shadow-sm text-black transition-all">报销/支出</button>
+                <button onclick="setType('income')" id="btn-income" class="flex-1 py-2.5 rounded-lg text-sm font-bold text-gray-500 transition-all">收入/入账</button>
+            </div>
+            <div class="bg-white rounded-2xl overflow-hidden shadow-sm">
+                <div class="flex items-center p-4 border-b border-gray-100">
+                    <span class="w-20 text-gray-900 font-medium">事由</span>
+                    <input type="text" id="desc" class="flex-1 outline-none text-right text-lg" placeholder="必填">
+                </div>
+                <div class="flex items-center p-4 border-b border-gray-100">
+                    <span class="w-20 text-gray-900 font-medium">日期</span>
+                    <input type="date" id="date" class="flex-1 outline-none text-right text-blue-600 font-bold bg-transparent">
+                </div>
+                <div class="flex items-center p-4">
+                    <span class="w-20 text-gray-900 font-medium">项目</span>
+                    <input type="text" id="project" class="flex-1 outline-none text-right text-lg" placeholder="选填 (如: Freya)">
+                </div>
+            </div>
+            <div class="bg-white rounded-2xl p-4 flex justify-between items-center shadow-sm">
+                <span class="font-medium text-gray-900 ml-1">是否出差</span>
+                <div class="relative inline-block w-12 h-7 align-middle select-none">
+                    <input type="checkbox" id="trip-toggle" class="toggle-checkbox absolute block w-7 h-7 rounded-full bg-white border-4 appearance-none cursor-pointer border-gray-300 transition-all duration-300 ease-in-out left-0"/>
+                    <label for="trip-toggle" class="toggle-label block overflow-hidden h-7 rounded-full bg-gray-300 cursor-pointer transition-colors duration-300 ease-in-out"></label>
+                </div>
+            </div>
+            <div class="h-20"></div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    const MY_SUPABASE_URL = 'https://bdlvpffunkbbgdoyqyyn.supabase.co';
+    const MY_SUPABASE_KEY = 'sb_publishable_kr3xnYLybVeg4j942H-3HQ_guPabQIL';
+
+    let sb = null;
+    let currentType = 'expense';
+    let uid = null;
+
+    // 初始化
+    const yearSelect = document.getElementById('filter-year');
+    const currentYear = new Date().getFullYear();
+    for (let i = currentYear; i >= currentYear - 3; i--) {
+        const opt = document.createElement('option');
+        opt.value = i; opt.innerHTML = i + "年";
+        yearSelect.appendChild(opt);
+    }
+    document.getElementById('filter-month').value = (new Date().getMonth() + 1).toString().padStart(2, '0');
+    document.getElementById('date').value = new Date().toISOString().split('T')[0];
+
+    window.onload = async () => {
+        if (!window.supabase) return alert("资源加载中...");
+        try {
+            sb = window.supabase.createClient(MY_SUPABASE_URL, MY_SUPABASE_KEY);
+            const { data } = await sb.auth.getSession();
+            if (data.session) enterApp(data.session);
+            sb.auth.onAuthStateChange((e, s) => { if(s) enterApp(s); else showLogin(); });
+        } catch(e) { console.error(e); }
+    };
+
+    function showLogin() {
+        document.getElementById('login-view').classList.remove('hidden');
+        document.getElementById('app-view').classList.add('hidden');
+    }
+
+    function enterApp(session) {
+        document.getElementById('login-view').classList.add('hidden');
+        document.getElementById('app-view').classList.remove('hidden');
+        uid = session.user.id;
+
+        // 顺序：先加载所有项目列表，再加载数据
+        initProjectFilter().then(() => loadData());
+    }
+
+    async function handleLogin() {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        const btn = document.getElementById('login-btn');
+        const banner = document.getElementById('error-banner');
+        if (!email || !password) return alert("请输入完整");
+        btn.disabled = true; btn.innerText = "验证中..."; banner.classList.add('hidden');
+        if (!sb) sb = window.supabase.createClient(MY_SUPABASE_URL, MY_SUPABASE_KEY);
+        try {
+            const { error } = await sb.auth.signInWithPassword({ email, password });
+            if (error) throw error;
+        } catch (e) {
+            btn.disabled = false; btn.innerText = "登 录";
+            banner.innerText = e.message; banner.classList.remove('hidden');
+        }
+    }
+
+    async function handleLogout() {
+        if(confirm("确定退出？")) { await sb.auth.signOut(); showLogin(); }
+    }
+
+    // --- 新增：初始化项目筛选下拉框 ---
+    async function initProjectFilter() {
+        // 查询所有有项目名称的记录
+        const { data, error } = await sb.from('transactions')
+            .select('project_name')
+            .not('project_name', 'is', null); // 排除空值
+
+        if(error || !data) return;
+
+        // 去重
+        const projects = [...new Set(data.map(item => item.project_name))];
+        const select = document.getElementById('filter-project');
+
+        // 保留第一个“全部项目”选项，清空后面的
+        select.innerHTML = '<option value="">全部项目</option>';
+
+        projects.forEach(p => {
+            if(p && p.trim() !== '') {
+                const opt = document.createElement('option');
+                opt.value = p;
+                opt.innerText = p;
+                select.appendChild(opt);
+            }
+        });
+    }
+
+    // 核心：数据加载与筛选
+    async function loadData() {
+        const year = document.getElementById('filter-year').value;
+        const month = document.getElementById('filter-month').value;
+        const project = document.getElementById('filter-project').value; // 获取下拉框的值
+
+        // 1. 日期筛选
+        let start, end;
+        if (month === 'all') {
+            start = `${year}-01-01`;
+            end = `${parseInt(year)+1}-01-01`;
+        } else {
+            start = `${year}-${month}-01`;
+            let nextM = parseInt(month) + 1, nextY = parseInt(year);
+            if(nextM > 12) { nextM = 1; nextY++; }
+            end = `${nextY}-${nextM.toString().padStart(2,'0')}-01`;
+        }
+
+        // 2. 构建查询
+        let query = sb.from('transactions')
+            .select('*')
+            .gte('date', start).lt('date', end)
+            .order('date', {ascending: false}).order('created_at', {ascending: false});
+
+        // 3. 项目筛选 (精确匹配)
+        if(project) {
+            query = query.eq('project_name', project);
+        }
+
+        const { data, error } = await query;
+        if (error) return console.error(error);
+        renderList(data);
+    }
+
+    function renderList(list) {
+        const container = document.getElementById('tx-list');
+
+        // 统计逻辑 (V8修正版)
+        const total = list.reduce((sum, item) => {
+            const val = Number(item.amount);
+            if (item.type === 'expense') return sum + val;
+            if (item.type === 'income') return sum - val;
+            return sum;
+        }, 0);
+
+        const totalDisplay = document.getElementById('total-display');
+        const valSpan = document.getElementById('total-val');
+
+        valSpan.innerText = Math.abs(total).toFixed(2); 
+        if (total >= 0) {
+            totalDisplay.className = "text-3xl font-bold tracking-tight text-black";
+            totalDisplay.innerHTML = `¥<span id="total-val">${total.toFixed(2)}</span>`;
+        } else {
+            totalDisplay.className = "text-3xl font-bold tracking-tight text-[#34C759]";
+            totalDisplay.innerHTML = `-¥<span id="total-val">${Math.abs(total).toFixed(2)}</span>`;
+        }
+
+        if (list.length === 0) {
+            container.innerHTML = '<div class="flex flex-col items-center justify-center mt-20 opacity-30"><div class="text-6xl mb-4">📭</div><div class="text-sm">暂无记录</div></div>';
+            return;
+        }
+
+        const groups = {};
+        list.forEach(item => { if(!groups[item.date]) groups[item.date] = []; groups[item.date].push(item); });
+
+        let html = '';
+        for (const date in groups) {
+            const dateObj = new Date(date);
+            const dayStr = `${dateObj.getMonth()+1}月${dateObj.getDate()}日`;
+            const weekDay = "周" + "日一二三四五六".charAt(dateObj.getDay());
+
+            html += `<div class="mb-5"><div class="flex items-baseline px-2 mb-2"><div class="text-lg font-bold mr-2">${dayStr}</div><div class="text-xs text-gray-400 font-medium">${weekDay}</div></div><div class="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100/50">`;
+
+            groups[date].forEach((item, idx) => {
+                const isInc = item.type === 'income';
+                const color = isInc ? 'text-[#34C759]' : 'text-black';
+                const sign = isInc ? '-' : '+';
+
+                let tags = '';
+                if(item.is_business_trip) tags += `<span class="bg-indigo-50 text-indigo-600 text-[10px] px-1.5 py-0.5 rounded font-bold ml-2 border border-indigo-100">出差</span>`;
+                if(item.project_name) tags += `<span class="bg-orange-50 text-orange-600 text-[10px] px-1.5 py-0.5 rounded font-bold ml-1 border border-orange-100">${item.project_name}</span>`;
+
+                html += `
+                    <div class="relative group">
+                        <div class="flex justify-between items-center p-4 active:bg-gray-50 transition">
+                            <div class="flex-1 overflow-hidden mr-4">
+                                <div class="flex items-center flex-wrap">
+                                    <span class="font-medium text-[16px] text-gray-900">${item.description}</span>
+                                    ${tags}
+                                </div>
+                            </div>
+                            <div class="font-bold text-lg ${color} flex-shrink-0 tracking-tight font-mono">${sign}${Number(item.amount).toFixed(2)}</div>
+                        </div>
+                        <button onclick="deleteTx('${item.id}')" class="absolute right-0 top-0 bottom-0 w-16 flex items-center justify-center text-red-500 opacity-20 hover:opacity-100 active:opacity-100 transition-opacity">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        </button>
+                    </div>
+                    ${idx < groups[date].length - 1 ? '<div class="h-[0.5px] bg-gray-100 ml-4"></div>' : ''}
+                `;
+            });
+            html += `</div></div>`;
+        }
+        container.innerHTML = html;
+    }
+
+    async function deleteTx(id) {
+        if(!confirm("确定要删除这条记录吗？")) return;
+        const { error } = await sb.from('transactions').delete().eq('id', id);
+        if(error) alert("删除失败");
+        else {
+            // 删除后重新加载项目列表，以防删掉了唯一的项目记录
+            initProjectFilter().then(() => loadData());
+        }
+    }
+
+    async function submitData() {
+        const amt = document.getElementById('amt').value;
+        const desc = document.getElementById('desc').value;
+        if (!amt || !desc) return alert("必填项为空");
+        const btn = document.getElementById('save-btn'); btn.disabled = true; btn.innerText = "...";
+        const { error } = await sb.from('transactions').insert({
+            amount: amt, description: desc, type: currentType,
+            date: document.getElementById('date').value,
+            project_name: document.getElementById('project').value || null,
+            is_business_trip: document.getElementById('trip-toggle').checked,
+            user_id: uid
+        });
+        btn.disabled = false; btn.innerText = "保存";
+        if (error) alert("保存失败: " + error.message);
+        else {
+            document.getElementById('amt').value = ''; document.getElementById('desc').value = '';
+            document.getElementById('project').value = ''; closeModal(); 
+            // 保存后，刷新项目列表和数据
+            initProjectFilter().then(() => loadData());
+        }
+    }
+
+    function setType(type) {
+        currentType = type;
+        const btnExp = document.getElementById('btn-expense');
+        const btnInc = document.getElementById('btn-income');
+        if (type === 'expense') {
+            btnExp.className = "flex-1 py-2.5 rounded-lg text-sm font-bold bg-white shadow-sm text-black transition-all";
+            btnInc.className = "flex-1 py-2.5 rounded-lg text-sm font-bold text-gray-500 transition-all";
+        } else {
+            btnInc.className = "flex-1 py-2.5 rounded-lg text-sm font-bold bg-white shadow-sm text-[#34C759] transition-all";
+            btnExp.className = "flex-1 py-2.5 rounded-lg text-sm font-bold text-gray-500 transition-all";
+        }
+    }
+    function openModal() { document.getElementById('modal-overlay').classList.remove('hidden'); setTimeout(() => { document.getElementById('modal-overlay').classList.remove('opacity-0'); document.getElementById('add-modal').classList.remove('translate-y-full'); }, 10); setTimeout(()=> document.getElementById('amt').focus(), 300); }
+    function closeModal() { document.getElementById('add-modal').classList.add('translate-y-full'); document.getElementById('modal-overlay').classList.add('opacity-0'); setTimeout(() => { document.getElementById('modal-overlay').classList.add('hidden'); }, 300); }
+</script>
+</body>
+</html>
