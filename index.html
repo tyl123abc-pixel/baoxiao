@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>报销系统 (V9 项目筛选版)</title>
+    <title>报销系统 (V10 修复版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif; background-color: #000; margin: 0; padding: 0; display: flex; justify-content: center; min-height: 100vh; color: #1C1C1E; }
-
+        
         #root-container {
             width: 100%;
             max-width: 440px; 
@@ -25,7 +25,7 @@
 
         .toggle-checkbox:checked { right: 0; border-color: #34C759; }
         .toggle-checkbox:checked + .toggle-label { background-color: #34C759; }
-
+        
         .modal-transition { transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1); }
         .translate-y-full { transform: translateY(100%); }
         .translate-y-0 { transform: translateY(0); }
@@ -55,7 +55,7 @@
     </div>
 
     <div id="app-view" class="flex-1 flex flex-col hidden h-full bg-[#F2F2F7]">
-
+        
         <header class="glass sticky top-0 z-20 pt-safe flex flex-col">
             <div class="px-5 pt-4 pb-2 flex justify-between items-center">
                 <div>
@@ -75,21 +75,18 @@
                         <svg class="fill-current h-3 w-3" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
                     </div>
                 </div>
-
                 <div class="relative w-16 flex-shrink-0">
                     <select id="filter-month" onchange="loadData()" class="w-full bg-gray-100 appearance-none rounded-lg py-1.5 pl-2 pr-4 text-sm font-bold text-gray-700 outline-none">
                         <option value="all">全年</option>
                         <option value="01">1月</option><option value="02">2月</option><option value="03">3月</option>
                         <option value="04">4月</option><option value="05">5月</option><option value="06">6月</option>
                         <option value="07">7月</option><option value="08">8月</option><option value="09">9月</option>
-                        <option value="10">10月</option><option value="11">11月</option>
-                        <option value="12">12月</option>
+                        <option value="10">10月</option><option value="11">11月</option><option value="12">12月</option>
                     </select>
                     <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1 text-gray-500">
                         <svg class="fill-current h-3 w-3" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
                     </div>
                 </div>
-
                 <div class="relative flex-1">
                     <select id="filter-project" onchange="loadData()" class="w-full bg-gray-100 appearance-none rounded-lg py-1.5 pl-3 pr-8 text-sm font-medium text-gray-700 outline-none">
                         <option value="">全部项目</option>
@@ -105,7 +102,7 @@
             </main>
 
         <div class="absolute bottom-8 right-6 z-30 pb-safe">
-            <button onclick="openModal()" class="w-14 h-14 bg-[#007AFF] rounded-full shadow-2xl flex items-center justify-center text-white active:scale-90 transition-transform">
+            <button onclick="openModal()" class="w-16 h-16 bg-[#007AFF] rounded-full shadow-2xl flex items-center justify-center text-white active:scale-90 transition-transform">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
                 </svg>
@@ -142,7 +139,7 @@
                 </div>
                 <div class="flex items-center p-4">
                     <span class="w-20 text-gray-900 font-medium">项目</span>
-                    <input type="text" id="project" class="flex-1 outline-none text-right text-lg" placeholder="选填 (如: Freya)">
+                    <input type="text" id="project" class="flex-1 outline-none text-right text-lg" placeholder="选填">
                 </div>
             </div>
             <div class="bg-white rounded-2xl p-4 flex justify-between items-center shadow-sm">
@@ -166,7 +163,7 @@
     let currentType = 'expense';
     let uid = null;
 
-    // 初始化
+    // 初始化下拉框
     const yearSelect = document.getElementById('filter-year');
     const currentYear = new Date().getFullYear();
     for (let i = currentYear; i >= currentYear - 3; i--) {
@@ -191,13 +188,10 @@
         document.getElementById('login-view').classList.remove('hidden');
         document.getElementById('app-view').classList.add('hidden');
     }
-
     function enterApp(session) {
         document.getElementById('login-view').classList.add('hidden');
         document.getElementById('app-view').classList.remove('hidden');
         uid = session.user.id;
-
-        // 顺序：先加载所有项目列表，再加载数据
         initProjectFilter().then(() => loadData());
     }
 
@@ -222,43 +216,28 @@
         if(confirm("确定退出？")) { await sb.auth.signOut(); showLogin(); }
     }
 
-    // --- 新增：初始化项目筛选下拉框 ---
     async function initProjectFilter() {
-        // 查询所有有项目名称的记录
-        const { data, error } = await sb.from('transactions')
-            .select('project_name')
-            .not('project_name', 'is', null); // 排除空值
-
+        const { data, error } = await sb.from('transactions').select('project_name').not('project_name', 'is', null);
         if(error || !data) return;
-
-        // 去重
         const projects = [...new Set(data.map(item => item.project_name))];
         const select = document.getElementById('filter-project');
-
-        // 保留第一个“全部项目”选项，清空后面的
         select.innerHTML = '<option value="">全部项目</option>';
-
         projects.forEach(p => {
             if(p && p.trim() !== '') {
                 const opt = document.createElement('option');
-                opt.value = p;
-                opt.innerText = p;
-                select.appendChild(opt);
+                opt.value = p; opt.innerText = p; select.appendChild(opt);
             }
         });
     }
 
-    // 核心：数据加载与筛选
     async function loadData() {
         const year = document.getElementById('filter-year').value;
         const month = document.getElementById('filter-month').value;
-        const project = document.getElementById('filter-project').value; // 获取下拉框的值
-
-        // 1. 日期筛选
+        const project = document.getElementById('filter-project').value;
+        
         let start, end;
         if (month === 'all') {
-            start = `${year}-01-01`;
-            end = `${parseInt(year)+1}-01-01`;
+            start = `${year}-01-01`; end = `${parseInt(year)+1}-01-01`;
         } else {
             start = `${year}-${month}-01`;
             let nextM = parseInt(month) + 1, nextY = parseInt(year);
@@ -266,16 +245,10 @@
             end = `${nextY}-${nextM.toString().padStart(2,'0')}-01`;
         }
 
-        // 2. 构建查询
-        let query = sb.from('transactions')
-            .select('*')
-            .gte('date', start).lt('date', end)
+        let query = sb.from('transactions').select('*').gte('date', start).lt('date', end)
             .order('date', {ascending: false}).order('created_at', {ascending: false});
 
-        // 3. 项目筛选 (精确匹配)
-        if(project) {
-            query = query.eq('project_name', project);
-        }
+        if(project) query = query.eq('project_name', project);
 
         const { data, error } = await query;
         if (error) return console.error(error);
@@ -284,8 +257,6 @@
 
     function renderList(list) {
         const container = document.getElementById('tx-list');
-
-        // 统计逻辑 (V8修正版)
         const total = list.reduce((sum, item) => {
             const val = Number(item.amount);
             if (item.type === 'expense') return sum + val;
@@ -295,7 +266,7 @@
 
         const totalDisplay = document.getElementById('total-display');
         const valSpan = document.getElementById('total-val');
-
+        
         valSpan.innerText = Math.abs(total).toFixed(2); 
         if (total >= 0) {
             totalDisplay.className = "text-3xl font-bold tracking-tight text-black";
@@ -318,14 +289,13 @@
             const dateObj = new Date(date);
             const dayStr = `${dateObj.getMonth()+1}月${dateObj.getDate()}日`;
             const weekDay = "周" + "日一二三四五六".charAt(dateObj.getDay());
-
+            
             html += `<div class="mb-5"><div class="flex items-baseline px-2 mb-2"><div class="text-lg font-bold mr-2">${dayStr}</div><div class="text-xs text-gray-400 font-medium">${weekDay}</div></div><div class="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100/50">`;
-
+            
             groups[date].forEach((item, idx) => {
                 const isInc = item.type === 'income';
                 const color = isInc ? 'text-[#34C759]' : 'text-black';
                 const sign = isInc ? '-' : '+';
-
                 let tags = '';
                 if(item.is_business_trip) tags += `<span class="bg-indigo-50 text-indigo-600 text-[10px] px-1.5 py-0.5 rounded font-bold ml-2 border border-indigo-100">出差</span>`;
                 if(item.project_name) tags += `<span class="bg-orange-50 text-orange-600 text-[10px] px-1.5 py-0.5 rounded font-bold ml-1 border border-orange-100">${item.project_name}</span>`;
@@ -341,8 +311,8 @@
                             </div>
                             <div class="font-bold text-lg ${color} flex-shrink-0 tracking-tight font-mono">${sign}${Number(item.amount).toFixed(2)}</div>
                         </div>
-                        <button onclick="deleteTx('${item.id}')" class="absolute right-0 top-0 bottom-0 w-16 flex items-center justify-center text-red-500 opacity-20 hover:opacity-100 active:opacity-100 transition-opacity">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        <button onclick="deleteTx(event, '${item.id}')" class="absolute right-0 top-0 bottom-0 w-16 flex items-center justify-center text-red-500 z-10 opacity-30 hover:opacity-100 active:opacity-100">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                         </button>
                     </div>
                     ${idx < groups[date].length - 1 ? '<div class="h-[0.5px] bg-gray-100 ml-4"></div>' : ''}
@@ -353,12 +323,16 @@
         container.innerHTML = html;
     }
 
-    async function deleteTx(id) {
+    // 删除逻辑 (关键修正: event.stopPropagation, 错误提示)
+    async function deleteTx(event, id) {
+        event.stopPropagation(); // 防止误触
         if(!confirm("确定要删除这条记录吗？")) return;
+        
         const { error } = await sb.from('transactions').delete().eq('id', id);
-        if(error) alert("删除失败");
-        else {
-            // 删除后重新加载项目列表，以防删掉了唯一的项目记录
+        if(error) {
+            alert("删除失败: " + error.message + "\n(如果一直失败，请确认是否运行了 Step 1 的 SQL 代码)");
+        } else {
+            // 删除成功后，刷新项目筛选器和列表
             initProjectFilter().then(() => loadData());
         }
     }
@@ -380,7 +354,6 @@
         else {
             document.getElementById('amt').value = ''; document.getElementById('desc').value = '';
             document.getElementById('project').value = ''; closeModal(); 
-            // 保存后，刷新项目列表和数据
             initProjectFilter().then(() => loadData());
         }
     }
