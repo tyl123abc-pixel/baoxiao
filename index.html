@@ -3,34 +3,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>报销系统 (V10 修复版)</title>
+    <title>报销系统 (V12 可修改版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif; background-color: #000; margin: 0; padding: 0; display: flex; justify-content: center; min-height: 100vh; color: #1C1C1E; }
+        /* ================== 核心动效与质感 (保持 V11 风格) ================== */
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif; 
+            background-color: #F0F2F5; 
+            color: #1D1D1F; 
+            margin: 0; padding: 0; 
+            display: flex; justify-content: center; min-height: 100vh; 
+            -webkit-font-smoothing: antialiased;
+        }
         
         #root-container {
-            width: 100%;
-            max-width: 440px; 
-            background: #F2F2F7; 
-            height: 100vh; 
-            position: relative; 
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
+            width: 100%; max-width: 440px; 
+            background: #F5F7FA; 
+            height: 100vh; position: relative; overflow: hidden;
+            display: flex; flex-direction: column;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
         }
 
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-        .toggle-checkbox:checked { right: 0; border-color: #34C759; }
-        .toggle-checkbox:checked + .toggle-label { background-color: #34C759; }
-        
-        .modal-transition { transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1); }
-        .translate-y-full { transform: translateY(100%); }
-        .translate-y-0 { transform: translateY(0); }
+        @keyframes slideUpFade {
+            from { opacity: 0; transform: translateY(20px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .list-item-anim {
+            animation: slideUpFade 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+            opacity: 0; 
+        }
 
-        .glass { background: rgba(255,255,255,0.95); border-bottom: 0.5px solid rgba(0,0,0,0.1); }
+        .glass-nav { 
+            background: rgba(255, 255, 255, 0.8); 
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); 
+            border-bottom: 1px solid rgba(0,0,0,0.03);
+            box-shadow: 0 4px 30px rgba(0,0,0,0.02);
+        }
+
+        .text-gradient-dark {
+            background: linear-gradient(135deg, #1a1a1a 0%, #4a4a4a 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .text-gradient-green {
+            background: linear-gradient(135deg, #059669 0%, #34d399 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+
+        input, select {
+            background: #FFFFFF; border: 1px solid #E5E7EB;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+        }
+        input:focus, select:focus {
+            border-color: #3B82F6; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15); transform: translateY(-1px);
+        }
+
+        .btn-bounce:active { transform: scale(0.92); }
+        .btn-primary {
+            background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.3);
+        }
+
+        .toggle-checkbox:checked { right: 0; border-color: #2563EB; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #2563EB; }
+        
+        .modal-transition { transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1); }
         .pt-safe { padding-top: env(safe-area-inset-top); }
         .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
     </style>
@@ -39,70 +80,75 @@
 
 <div id="root-container">
 
-    <div id="login-view" class="absolute inset-0 z-50 flex flex-col justify-center px-8 bg-white transition-opacity duration-300">
-        <div class="mb-10 text-center">
-            <h1 class="text-3xl font-bold text-black mb-2 tracking-tight">报销系统</h1>
-            <p class="text-gray-400 text-sm">Supabase 云端同步</p>
+    <div id="login-view" class="absolute inset-0 z-50 flex flex-col justify-center px-8 bg-[#F9FAFB] transition-opacity duration-300">
+        <div class="mb-12 text-center">
+            <div class="inline-block p-4 bg-white rounded-[2rem] shadow-xl mb-6">
+                <svg class="w-12 h-12 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            </div>
+            <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">Hello.</h1>
+            <p class="text-gray-400 text-sm mt-2 font-medium">Supabase Cloud Sync</p>
         </div>
-        <div id="error-banner" class="bg-red-50 text-red-500 p-3 rounded-xl text-sm mb-4 text-center hidden border border-red-100"></div>
-        <div class="space-y-4">
-            <input type="email" id="email" class="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition text-lg" placeholder="邮箱" value="hzp15@qq.com">
-            <input type="password" id="password" class="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition text-lg" placeholder="密码">
+        <div id="error-banner" class="bg-red-50 border border-red-100 text-red-500 p-4 rounded-2xl text-sm mb-6 text-center hidden shadow-sm"></div>
+        <div class="space-y-5">
+            <input type="email" id="email" class="w-full p-5 rounded-2xl outline-none text-lg font-medium text-gray-700 placeholder-gray-300" placeholder="账号" value="hzp15@qq.com">
+            <input type="password" id="password" class="w-full p-5 rounded-2xl outline-none text-lg font-medium text-gray-700 placeholder-gray-300" placeholder="密码">
         </div>
-        <button onclick="handleLogin()" id="login-btn" class="w-full bg-[#007AFF] text-white font-bold py-4 rounded-2xl text-lg mt-8 active:scale-95 transition shadow-xl shadow-blue-100">
-            登 录
+        <button onclick="handleLogin()" id="login-btn" class="w-full btn-primary text-white font-bold py-5 rounded-2xl text-lg mt-10 transition-transform btn-bounce tracking-wide">
+            进入系统
         </button>
     </div>
 
-    <div id="app-view" class="flex-1 flex flex-col hidden h-full bg-[#F2F2F7]">
+    <div id="app-view" class="flex-1 flex flex-col hidden h-full bg-[#F5F7FA]">
         
-        <header class="glass sticky top-0 z-20 pt-safe flex flex-col">
-            <div class="px-5 pt-4 pb-2 flex justify-between items-center">
+        <header class="glass-nav sticky top-0 z-20 pt-safe flex flex-col transition-all duration-300">
+            <div class="px-6 pt-6 pb-2 flex justify-between items-center">
                 <div>
-                    <div class="text-xs text-gray-500 font-medium mb-1">净报销额 (支出-收入)</div>
-                    <div class="text-3xl font-bold tracking-tight text-black" id="total-display">¥<span id="total-val">0.00</span></div>
+                    <div class="text-xs text-gray-400 font-bold tracking-wider uppercase mb-1">Net Balance</div>
+                    <div class="text-4xl font-black tracking-tight" id="total-display">
+                        ¥<span id="total-val">0.00</span>
+                    </div>
                 </div>
-                <button onclick="handleLogout()" class="bg-gray-100 p-2 rounded-full text-gray-400 active:bg-gray-200">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                <button onclick="handleLogout()" class="bg-white p-3 rounded-full text-gray-400 shadow-md hover:shadow-lg active:scale-90 transition-all border border-gray-100">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
                 </button>
             </div>
 
-            <div class="px-5 pb-3 pt-1 flex gap-2">
-                <div class="relative w-20 flex-shrink-0">
-                    <select id="filter-year" onchange="loadData()" class="w-full bg-gray-100 appearance-none rounded-lg py-1.5 pl-2 pr-5 text-sm font-bold text-gray-700 outline-none">
+            <div class="px-6 pb-4 pt-2 flex gap-3 overflow-x-auto no-scrollbar">
+                <div class="relative min-w-[5.5rem] shadow-sm rounded-xl">
+                    <select id="filter-year" onchange="loadData()" class="w-full appearance-none bg-white rounded-xl py-2 pl-3 pr-6 text-xs font-bold text-gray-600 outline-none border-0 ring-1 ring-gray-100">
                         </select>
-                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1 text-gray-500">
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
                         <svg class="fill-current h-3 w-3" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
                     </div>
                 </div>
-                <div class="relative w-16 flex-shrink-0">
-                    <select id="filter-month" onchange="loadData()" class="w-full bg-gray-100 appearance-none rounded-lg py-1.5 pl-2 pr-4 text-sm font-bold text-gray-700 outline-none">
+                <div class="relative min-w-[4.5rem] shadow-sm rounded-xl">
+                    <select id="filter-month" onchange="loadData()" class="w-full appearance-none bg-white rounded-xl py-2 pl-3 pr-6 text-xs font-bold text-gray-600 outline-none border-0 ring-1 ring-gray-100">
                         <option value="all">全年</option>
                         <option value="01">1月</option><option value="02">2月</option><option value="03">3月</option>
                         <option value="04">4月</option><option value="05">5月</option><option value="06">6月</option>
                         <option value="07">7月</option><option value="08">8月</option><option value="09">9月</option>
                         <option value="10">10月</option><option value="11">11月</option><option value="12">12月</option>
                     </select>
-                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1 text-gray-500">
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
                         <svg class="fill-current h-3 w-3" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
                     </div>
                 </div>
-                <div class="relative flex-1">
-                    <select id="filter-project" onchange="loadData()" class="w-full bg-gray-100 appearance-none rounded-lg py-1.5 pl-3 pr-8 text-sm font-medium text-gray-700 outline-none">
+                <div class="relative flex-1 shadow-sm rounded-xl">
+                    <select id="filter-project" onchange="loadData()" class="w-full appearance-none bg-white rounded-xl py-2 pl-3 pr-8 text-xs font-bold text-gray-600 outline-none border-0 ring-1 ring-gray-100">
                         <option value="">全部项目</option>
                         </select>
-                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
                         <svg class="fill-current h-3 w-3" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
                     </div>
                 </div>
             </div>
         </header>
 
-        <main id="tx-list" class="flex-1 overflow-y-auto p-4 space-y-5 pb-32 no-scrollbar">
+        <main id="tx-list" class="flex-1 overflow-y-auto p-5 space-y-6 pb-36 no-scrollbar">
             </main>
 
-        <div class="absolute bottom-8 right-6 z-30 pb-safe">
-            <button onclick="openModal()" class="w-16 h-16 bg-[#007AFF] rounded-full shadow-2xl flex items-center justify-center text-white active:scale-90 transition-transform">
+        <div class="absolute bottom-10 right-6 z-30 pb-safe">
+            <button onclick="openModal()" class="w-16 h-16 btn-primary rounded-full flex items-center justify-center text-white btn-bounce shadow-2xl transition-all hover:-translate-y-1">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
                 </svg>
@@ -110,46 +156,57 @@
         </div>
     </div>
 
-    <div id="modal-overlay" class="absolute inset-0 bg-black/40 z-40 hidden opacity-0 transition-opacity backdrop-blur-sm" onclick="closeModal()"></div>
-    <div id="add-modal" class="absolute bottom-0 left-0 right-0 bg-[#F2F2F7] rounded-t-[2rem] z-50 modal-transition translate-y-full h-[85%] flex flex-col shadow-2xl pb-safe">
-        <div class="px-6 py-5 flex justify-between items-center bg-white rounded-t-[2rem] border-b border-gray-100">
-            <button onclick="closeModal()" class="text-gray-500 text-base font-medium">取消</button>
-            <span class="font-bold text-lg">记一笔</span>
-            <button onclick="submitData()" class="text-[#007AFF] font-bold text-base" id="save-btn">保存</button>
+    <div id="modal-overlay" class="absolute inset-0 bg-gray-900/20 z-40 hidden opacity-0 transition-opacity backdrop-blur-sm" onclick="closeModal()"></div>
+    <div id="add-modal" class="absolute bottom-0 left-0 right-0 bg-[#FFFFFF] rounded-t-[2.5rem] z-50 modal-transition translate-y-full h-[90%] flex flex-col shadow-[0_-10px_40px_rgba(0,0,0,0.1)] pb-safe">
+        
+        <div class="px-8 py-6 flex justify-between items-center bg-white rounded-t-[2.5rem]">
+            <button onclick="closeModal()" class="text-gray-400 text-sm font-bold tracking-wider hover:text-gray-600 transition btn-bounce">取消</button>
+            <div class="text-lg font-bold text-gray-800" id="modal-title">记一笔</div>
+            <button onclick="submitData()" class="text-blue-600 font-bold text-sm tracking-wider hover:text-blue-700 transition btn-bounce" id="save-btn">保存</button>
         </div>
-        <div class="flex-1 overflow-y-auto p-5 space-y-6">
-            <div class="bg-white rounded-2xl p-6 text-center shadow-sm">
-                <div class="flex justify-center items-baseline text-black">
-                    <span class="text-3xl font-bold mr-1">¥</span>
-                    <input type="number" id="amt" class="w-full text-center text-5xl font-bold bg-transparent outline-none placeholder-gray-200" placeholder="0">
+
+        <div class="flex-1 overflow-y-auto p-6 space-y-8">
+            <div class="text-center py-4">
+                <div class="flex justify-center items-baseline text-gray-900">
+                    <span class="text-3xl font-bold mr-2 text-gray-300">¥</span>
+                    <input type="number" id="amt" class="w-full text-center text-6xl font-black bg-transparent border-none shadow-none outline-none placeholder-gray-200 focus:shadow-none" placeholder="0">
+                </div>
+                <div class="text-xs text-gray-400 font-bold tracking-widest uppercase mt-2">Amount</div>
+            </div>
+
+            <div class="bg-gray-100 p-1.5 rounded-2xl flex shadow-inner">
+                <button onclick="setType('expense')" id="btn-expense" class="flex-1 py-3.5 rounded-xl text-xs font-bold bg-white text-gray-900 shadow-md transition-all tracking-wide">支出</button>
+                <button onclick="setType('income')" id="btn-income" class="flex-1 py-3.5 rounded-xl text-xs font-bold text-gray-400 transition-all tracking-wide">入账</button>
+            </div>
+
+            <div class="space-y-4">
+                <div class="bg-gray-50 rounded-2xl p-1 border border-gray-100">
+                    <div class="flex items-center px-5 py-4 border-b border-gray-200/60">
+                        <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center mr-4 text-blue-600"><svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg></div>
+                        <input type="text" id="desc" class="flex-1 bg-transparent border-none shadow-none text-lg font-medium text-gray-900 placeholder-gray-400 focus:shadow-none text-right" placeholder="事由 (必填)">
+                    </div>
+                    <div class="flex items-center px-5 py-4 border-b border-gray-200/60">
+                        <div class="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center mr-4 text-purple-600"><svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg></div>
+                        <input type="date" id="date" class="flex-1 bg-transparent border-none shadow-none text-lg font-bold text-gray-900 focus:shadow-none text-right font-mono tracking-tighter">
+                    </div>
+                    <div class="flex items-center px-5 py-4">
+                        <div class="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center mr-4 text-orange-600"><svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg></div>
+                        <input type="text" id="project" class="flex-1 bg-transparent border-none shadow-none text-lg font-medium text-gray-900 placeholder-gray-400 focus:shadow-none text-right" placeholder="项目 (选填)">
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl p-5 flex justify-between items-center border border-gray-100 shadow-sm">
+                    <div class="flex items-center">
+                        <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center mr-4 text-indigo-600"><svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064"></path></svg></div>
+                        <span class="font-bold text-gray-700">是否出差</span>
+                    </div>
+                    <div class="relative inline-block w-12 h-7 align-middle select-none">
+                        <input type="checkbox" id="trip-toggle" class="toggle-checkbox absolute block w-7 h-7 rounded-full bg-white border-4 appearance-none cursor-pointer border-gray-200 transition-all duration-300 ease-in-out left-0"/>
+                        <label for="trip-toggle" class="toggle-label block overflow-hidden h-7 rounded-full bg-gray-200 cursor-pointer transition-colors duration-300 ease-in-out"></label>
+                    </div>
                 </div>
             </div>
-            <div class="bg-gray-200 p-1 rounded-xl flex">
-                <button onclick="setType('expense')" id="btn-expense" class="flex-1 py-2.5 rounded-lg text-sm font-bold bg-white shadow-sm text-black transition-all">报销/支出</button>
-                <button onclick="setType('income')" id="btn-income" class="flex-1 py-2.5 rounded-lg text-sm font-bold text-gray-500 transition-all">收入/入账</button>
-            </div>
-            <div class="bg-white rounded-2xl overflow-hidden shadow-sm">
-                <div class="flex items-center p-4 border-b border-gray-100">
-                    <span class="w-20 text-gray-900 font-medium">事由</span>
-                    <input type="text" id="desc" class="flex-1 outline-none text-right text-lg" placeholder="必填">
-                </div>
-                <div class="flex items-center p-4 border-b border-gray-100">
-                    <span class="w-20 text-gray-900 font-medium">日期</span>
-                    <input type="date" id="date" class="flex-1 outline-none text-right text-blue-600 font-bold bg-transparent">
-                </div>
-                <div class="flex items-center p-4">
-                    <span class="w-20 text-gray-900 font-medium">项目</span>
-                    <input type="text" id="project" class="flex-1 outline-none text-right text-lg" placeholder="选填">
-                </div>
-            </div>
-            <div class="bg-white rounded-2xl p-4 flex justify-between items-center shadow-sm">
-                <span class="font-medium text-gray-900 ml-1">是否出差</span>
-                <div class="relative inline-block w-12 h-7 align-middle select-none">
-                    <input type="checkbox" id="trip-toggle" class="toggle-checkbox absolute block w-7 h-7 rounded-full bg-white border-4 appearance-none cursor-pointer border-gray-300 transition-all duration-300 ease-in-out left-0"/>
-                    <label for="trip-toggle" class="toggle-label block overflow-hidden h-7 rounded-full bg-gray-300 cursor-pointer transition-colors duration-300 ease-in-out"></label>
-                </div>
-            </div>
-            <div class="h-20"></div>
+            <div class="h-24"></div>
         </div>
     </div>
 
@@ -162,20 +219,19 @@
     let sb = null;
     let currentType = 'expense';
     let uid = null;
+    let cachedList = []; // 缓存数据用于查找
+    let editingId = null; // 当前正在编辑的ID，空则为新增
 
-    // 初始化下拉框
     const yearSelect = document.getElementById('filter-year');
     const currentYear = new Date().getFullYear();
     for (let i = currentYear; i >= currentYear - 3; i--) {
-        const opt = document.createElement('option');
-        opt.value = i; opt.innerHTML = i + "年";
-        yearSelect.appendChild(opt);
+        const opt = document.createElement('option'); opt.value = i; opt.innerText = i; yearSelect.appendChild(opt);
     }
     document.getElementById('filter-month').value = (new Date().getMonth() + 1).toString().padStart(2, '0');
     document.getElementById('date').value = new Date().toISOString().split('T')[0];
 
     window.onload = async () => {
-        if (!window.supabase) return alert("资源加载中...");
+        if (!window.supabase) return;
         try {
             sb = window.supabase.createClient(MY_SUPABASE_URL, MY_SUPABASE_KEY);
             const { data } = await sb.auth.getSession();
@@ -201,19 +257,19 @@
         const btn = document.getElementById('login-btn');
         const banner = document.getElementById('error-banner');
         if (!email || !password) return alert("请输入完整");
-        btn.disabled = true; btn.innerText = "验证中..."; banner.classList.add('hidden');
+        btn.disabled = true; btn.innerText = "正在验证..."; banner.classList.add('hidden');
         if (!sb) sb = window.supabase.createClient(MY_SUPABASE_URL, MY_SUPABASE_KEY);
         try {
             const { error } = await sb.auth.signInWithPassword({ email, password });
             if (error) throw error;
         } catch (e) {
-            btn.disabled = false; btn.innerText = "登 录";
+            btn.disabled = false; btn.innerText = "进入系统";
             banner.innerText = e.message; banner.classList.remove('hidden');
         }
     }
 
     async function handleLogout() {
-        if(confirm("确定退出？")) { await sb.auth.signOut(); showLogin(); }
+        if(confirm("确定退出登录？")) { await sb.auth.signOut(); showLogin(); }
     }
 
     async function initProjectFilter() {
@@ -224,8 +280,7 @@
         select.innerHTML = '<option value="">全部项目</option>';
         projects.forEach(p => {
             if(p && p.trim() !== '') {
-                const opt = document.createElement('option');
-                opt.value = p; opt.innerText = p; select.appendChild(opt);
+                const opt = document.createElement('option'); opt.value = p; opt.innerText = p; select.appendChild(opt);
             }
         });
     }
@@ -252,6 +307,7 @@
 
         const { data, error } = await query;
         if (error) return console.error(error);
+        cachedList = data; // 缓存数据供编辑使用
         renderList(data);
     }
 
@@ -269,15 +325,19 @@
         
         valSpan.innerText = Math.abs(total).toFixed(2); 
         if (total >= 0) {
-            totalDisplay.className = "text-3xl font-bold tracking-tight text-black";
+            totalDisplay.className = "text-4xl font-black tracking-tight text-gradient-dark";
             totalDisplay.innerHTML = `¥<span id="total-val">${total.toFixed(2)}</span>`;
         } else {
-            totalDisplay.className = "text-3xl font-bold tracking-tight text-[#34C759]";
+            totalDisplay.className = "text-4xl font-black tracking-tight text-gradient-green";
             totalDisplay.innerHTML = `-¥<span id="total-val">${Math.abs(total).toFixed(2)}</span>`;
         }
 
         if (list.length === 0) {
-            container.innerHTML = '<div class="flex flex-col items-center justify-center mt-20 opacity-30"><div class="text-6xl mb-4">📭</div><div class="text-sm">暂无记录</div></div>';
+            container.innerHTML = `
+                <div class="flex flex-col items-center justify-center mt-32 opacity-40 list-item-anim">
+                    <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4 text-3xl">🍃</div>
+                    <div class="text-sm font-bold text-gray-400 tracking-widest uppercase">No Records</div>
+                </div>`;
             return;
         }
 
@@ -285,37 +345,49 @@
         list.forEach(item => { if(!groups[item.date]) groups[item.date] = []; groups[item.date].push(item); });
 
         let html = '';
+        let delayIndex = 0;
+
         for (const date in groups) {
             const dateObj = new Date(date);
             const dayStr = `${dateObj.getMonth()+1}月${dateObj.getDate()}日`;
             const weekDay = "周" + "日一二三四五六".charAt(dateObj.getDay());
             
-            html += `<div class="mb-5"><div class="flex items-baseline px-2 mb-2"><div class="text-lg font-bold mr-2">${dayStr}</div><div class="text-xs text-gray-400 font-medium">${weekDay}</div></div><div class="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100/50">`;
+            html += `<div class="mb-8 list-item-anim" style="animation-delay: ${delayIndex * 0.05}s">
+                <div class="flex items-baseline px-4 mb-3">
+                    <div class="text-xl font-bold mr-2 text-gray-800">${dayStr}</div>
+                    <div class="text-xs text-gray-400 font-bold uppercase tracking-wide">${weekDay}</div>
+                </div>
+                <div class="bg-white rounded-3xl overflow-hidden shadow-[0_10px_30px_rgba(0,0,0,0.04)] border border-gray-50">`;
             
+            delayIndex++;
+
             groups[date].forEach((item, idx) => {
                 const isInc = item.type === 'income';
-                const color = isInc ? 'text-[#34C759]' : 'text-black';
+                const color = isInc ? 'text-emerald-500' : 'text-gray-900';
                 const sign = isInc ? '-' : '+';
+                
                 let tags = '';
-                if(item.is_business_trip) tags += `<span class="bg-indigo-50 text-indigo-600 text-[10px] px-1.5 py-0.5 rounded font-bold ml-2 border border-indigo-100">出差</span>`;
-                if(item.project_name) tags += `<span class="bg-orange-50 text-orange-600 text-[10px] px-1.5 py-0.5 rounded font-bold ml-1 border border-orange-100">${item.project_name}</span>`;
+                if(item.is_business_trip) tags += `<span class="bg-blue-50 text-blue-600 text-[10px] px-2 py-0.5 rounded-md font-bold ml-2 border border-blue-100 tracking-wide">出差</span>`;
+                if(item.project_name) tags += `<span class="bg-orange-50 text-orange-600 text-[10px] px-2 py-0.5 rounded-md font-bold ml-2 border border-orange-100 tracking-wide">${item.project_name}</span>`;
 
                 html += `
-                    <div class="relative group">
-                        <div class="flex justify-between items-center p-4 active:bg-gray-50 transition">
+                    <div class="relative group cursor-pointer btn-bounce transition-colors active:bg-gray-50" onclick="editTx('${item.id}')">
+                        <div class="flex justify-between items-center p-5">
                             <div class="flex-1 overflow-hidden mr-4">
                                 <div class="flex items-center flex-wrap">
-                                    <span class="font-medium text-[16px] text-gray-900">${item.description}</span>
+                                    <span class="font-bold text-[16px] text-gray-700">${item.description}</span>
                                     ${tags}
                                 </div>
                             </div>
-                            <div class="font-bold text-lg ${color} flex-shrink-0 tracking-tight font-mono">${sign}${Number(item.amount).toFixed(2)}</div>
+                            <div class="font-bold text-lg ${color} flex-shrink-0 font-mono tracking-tight">${sign}${Number(item.amount).toFixed(2)}</div>
                         </div>
-                        <button onclick="deleteTx(event, '${item.id}')" class="absolute right-0 top-0 bottom-0 w-16 flex items-center justify-center text-red-500 z-10 opacity-30 hover:opacity-100 active:opacity-100">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        <button onclick="deleteTx(event, '${item.id}')" class="absolute right-0 top-0 bottom-0 w-20 flex items-center justify-center text-red-500 z-10 opacity-0 hover:opacity-100 transition-all duration-300 bg-gradient-to-l from-white via-white/90 to-transparent">
+                            <div class="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center shadow-sm border border-red-100">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            </div>
                         </button>
                     </div>
-                    ${idx < groups[date].length - 1 ? '<div class="h-[0.5px] bg-gray-100 ml-4"></div>' : ''}
+                    ${idx < groups[date].length - 1 ? '<div class="h-[1px] bg-gray-100 ml-5 mr-5"></div>' : ''}
                 `;
             });
             html += `</div></div>`;
@@ -323,37 +395,66 @@
         container.innerHTML = html;
     }
 
-    // 删除逻辑 (关键修正: event.stopPropagation, 错误提示)
     async function deleteTx(event, id) {
-        event.stopPropagation(); // 防止误触
+        event.stopPropagation();
         if(!confirm("确定要删除这条记录吗？")) return;
-        
         const { error } = await sb.from('transactions').delete().eq('id', id);
-        if(error) {
-            alert("删除失败: " + error.message + "\n(如果一直失败，请确认是否运行了 Step 1 的 SQL 代码)");
-        } else {
-            // 删除成功后，刷新项目筛选器和列表
-            initProjectFilter().then(() => loadData());
-        }
+        if(error) alert("删除失败");
+        else initProjectFilter().then(() => loadData());
     }
 
+    // --- 修改：进入编辑模式 ---
+    function editTx(id) {
+        const item = cachedList.find(i => i.id === id);
+        if(!item) return;
+
+        editingId = id; // 标记正在编辑
+        document.getElementById('modal-title').innerText = "修改记录";
+        document.getElementById('amt').value = item.amount;
+        document.getElementById('desc').value = item.description;
+        document.getElementById('date').value = item.date;
+        document.getElementById('project').value = item.project_name || '';
+        document.getElementById('trip-toggle').checked = item.is_business_trip;
+        
+        setType(item.type);
+        openModal(false); // 不重置表单
+    }
+
+    // --- 修改：提交逻辑 ---
     async function submitData() {
         const amt = document.getElementById('amt').value;
         const desc = document.getElementById('desc').value;
-        if (!amt || !desc) return alert("必填项为空");
-        const btn = document.getElementById('save-btn'); btn.disabled = true; btn.innerText = "...";
-        const { error } = await sb.from('transactions').insert({
+        if (!amt || !desc) return alert("请填写完整信息");
+        
+        const btn = document.getElementById('save-btn'); 
+        btn.innerText = "保存中...";
+        btn.disabled = true;
+
+        const payload = {
             amount: amt, description: desc, type: currentType,
             date: document.getElementById('date').value,
             project_name: document.getElementById('project').value || null,
             is_business_trip: document.getElementById('trip-toggle').checked,
             user_id: uid
-        });
-        btn.disabled = false; btn.innerText = "保存";
-        if (error) alert("保存失败: " + error.message);
+        };
+
+        let error;
+        if (editingId) {
+            // 更新逻辑
+            const res = await sb.from('transactions').update(payload).eq('id', editingId);
+            error = res.error;
+        } else {
+            // 新增逻辑
+            const res = await sb.from('transactions').insert(payload);
+            error = res.error;
+        }
+
+        btn.disabled = false;
+        btn.innerText = "保存";
+
+        if (error) alert("错误: " + error.message);
         else {
-            document.getElementById('amt').value = ''; document.getElementById('desc').value = '';
-            document.getElementById('project').value = ''; closeModal(); 
+            closeModal(); 
             initProjectFilter().then(() => loadData());
         }
     }
@@ -363,15 +464,39 @@
         const btnExp = document.getElementById('btn-expense');
         const btnInc = document.getElementById('btn-income');
         if (type === 'expense') {
-            btnExp.className = "flex-1 py-2.5 rounded-lg text-sm font-bold bg-white shadow-sm text-black transition-all";
-            btnInc.className = "flex-1 py-2.5 rounded-lg text-sm font-bold text-gray-500 transition-all";
+            btnExp.className = "flex-1 py-3.5 rounded-xl text-xs font-bold bg-white text-gray-900 shadow-md transition-all tracking-wide transform scale-105";
+            btnInc.className = "flex-1 py-3.5 rounded-xl text-xs font-bold text-gray-400 transition-all tracking-wide bg-transparent shadow-none";
         } else {
-            btnInc.className = "flex-1 py-2.5 rounded-lg text-sm font-bold bg-white shadow-sm text-[#34C759] transition-all";
-            btnExp.className = "flex-1 py-2.5 rounded-lg text-sm font-bold text-gray-500 transition-all";
+            btnInc.className = "flex-1 py-3.5 rounded-xl text-xs font-bold bg-white text-emerald-600 shadow-md transition-all tracking-wide transform scale-105";
+            btnExp.className = "flex-1 py-3.5 rounded-xl text-xs font-bold text-gray-400 transition-all tracking-wide bg-transparent shadow-none";
         }
     }
-    function openModal() { document.getElementById('modal-overlay').classList.remove('hidden'); setTimeout(() => { document.getElementById('modal-overlay').classList.remove('opacity-0'); document.getElementById('add-modal').classList.remove('translate-y-full'); }, 10); setTimeout(()=> document.getElementById('amt').focus(), 300); }
-    function closeModal() { document.getElementById('add-modal').classList.add('translate-y-full'); document.getElementById('modal-overlay').classList.add('opacity-0'); setTimeout(() => { document.getElementById('modal-overlay').classList.add('hidden'); }, 300); }
+
+    function openModal(isNew = true) { 
+        if (isNew) {
+            editingId = null; // 重置为新增模式
+            document.getElementById('modal-title').innerText = "记一笔";
+            document.getElementById('amt').value = '';
+            document.getElementById('desc').value = '';
+            document.getElementById('project').value = '';
+            document.getElementById('trip-toggle').checked = false;
+            // 日期默认今天
+            document.getElementById('date').value = new Date().toISOString().split('T')[0];
+            setType('expense');
+        }
+        document.getElementById('modal-overlay').classList.remove('hidden'); 
+        setTimeout(() => { 
+            document.getElementById('modal-overlay').classList.remove('opacity-0'); 
+            document.getElementById('add-modal').classList.remove('translate-y-full'); 
+        }, 10); 
+        if(isNew) setTimeout(()=> document.getElementById('amt').focus(), 300); 
+    }
+
+    function closeModal() { 
+        document.getElementById('add-modal').classList.add('translate-y-full'); 
+        document.getElementById('modal-overlay').classList.add('opacity-0'); 
+        setTimeout(() => { document.getElementById('modal-overlay').classList.add('hidden'); }, 300); 
+    }
 </script>
 </body>
 </html>
